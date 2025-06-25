@@ -98,7 +98,7 @@ public:
 
 private:
   bool jacToJacReduced(const Jacobian& jac, Jacobian& jac_reduced);
-  void publishKinematicsData(const Eigen::MatrixXd& jac);
+  void publishKinematicsData(const Eigen::MatrixXd& jac, const Twist& v_in);
   void initializePublisher();
 
   // Mimic joint specific

@@ -114,7 +114,7 @@ bool ChainIkSolverVelMimicSVD::jacToJacReduced(const Jacobian& jac, Jacobian& ja
   return true;
 }
 
-void ChainIkSolverVelMimicSVD::publishKinematicsData(const Eigen::MatrixXd& jac)
+void ChainIkSolverVelMimicSVD::publishKinematicsData(const Eigen::MatrixXd& jac, const Twist& v_in)
 {
   // Lazy initialization of publisher
   if (!publisher_initialized_)
@@ -126,8 +126,12 @@ void ChainIkSolverVelMimicSVD::publishKinematicsData(const Eigen::MatrixXd& jac)
     return;
 
   auto msg = moveit_kinematics::msg::KinematicsData();
+  
+  // Fill the 6 arrays with data from the Jacobian matrix
+  // Ensure we don't exceed the bounds
   int rows = std::min(6, static_cast<int>(jac.rows()));
   int cols = std::min(7, static_cast<int>(jac.cols()));
+  
   for (int i = 0; i < rows; ++i)
   {
     for (int j = 0; j < cols; ++j)
@@ -143,6 +147,19 @@ void ChainIkSolverVelMimicSVD::publishKinematicsData(const Eigen::MatrixXd& jac)
       }
     }
   }
+  
+  // Fill velocity data (v_in.vel is a 3D vector)
+  for (int i = 0; i < 3; ++i)
+  {
+    msg.vel[i] = v_in.vel.data[i];
+  }
+  
+  // Fill rotation data (v_in.rot is a 3D vector)
+  for (int i = 0; i < 3; ++i)
+  {
+    msg.rot[i] = v_in.rot.data[i];
+  }
+  
   kinematics_publisher_->publish(msg);
 }
 
@@ -169,7 +186,7 @@ int ChainIkSolverVelMimicSVD::CartToJnt(const JntArray& q_in, const Twist& v_in,
   jac.topRows(rows).transpose() *= cartesian_weights.topRows(rows).asDiagonal();
 
   // Publish kinematics data
-  publishKinematicsData(jac);
+  publishKinematicsData(jac, v_in);
 
   // transform v_in to 6D Eigen::Vector
   Eigen::Matrix<double, 6, 1> vin;
