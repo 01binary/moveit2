@@ -22,6 +22,7 @@
   <author email="robot.moveit@gmail.com">Sachin Chitta</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
   <depend>moveit_common</depend>
 
   <depend>moveit_core</depend>
@@ -32,10 +33,13 @@
   <depend>tf2_kdl</depend>
   <depend>orocos_kdl_vendor</depend>
   <depend>moveit_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
 
   <!-- some requirements of ikfast scripts -->
   <exec_depend>urdfdom</exec_depend> <!-- provides check_urdf -->
   <exec_depend>python3-lxml</exec_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
 
   <test_depend>moveit_ros_planning</test_depend>
   <test_depend>moveit_resources_fanuc_description</test_depend>
@@ -49,6 +53,8 @@
   <test_depend>ros_testing</test_depend>
   <test_depend>moveit_configs_utils</test_depend>
   <test_depend>launch_param_builder</test_depend>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_cmake</build_type>

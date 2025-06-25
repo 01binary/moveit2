@@ -17,6 +17,13 @@ find_package(pluginlib REQUIRED)
 find_package(moveit_core REQUIRED)
 find_package(moveit_ros_planning REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+# Generate messages
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/KinematicsData.msg"
+  DEPENDENCIES std_msgs
+)
 
 # Finds Boost Components
 include(ConfigExtras.cmake)

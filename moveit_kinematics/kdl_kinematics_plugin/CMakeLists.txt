@@ -16,6 +16,9 @@ ament_target_dependencies(${MOVEIT_LIB_NAME}
   EIGEN3
 )
 
+# Link against the generated messages
+rosidl_target_interfaces(${MOVEIT_LIB_NAME} ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
 # prevent pluginlib from using boost
 target_compile_definitions(${MOVEIT_LIB_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
 # Causes the visibility macros to use dllexport rather than dllimport,

@@ -32,6 +32,10 @@
 #include <moveit/kdl_kinematics_plugin/joint_mimic.hpp>
 #include <Eigen/SVD>
 
+// ROS2 includes
+#include <rclcpp/rclcpp.hpp>
+#include <moveit_kinematics/msg/kinematics_data.hpp>
+
 namespace KDL
 {
 /**
@@ -94,6 +98,8 @@ public:
 
 private:
   bool jacToJacReduced(const Jacobian& jac, Jacobian& jac_reduced);
+  void publishKinematicsData(const Eigen::MatrixXd& jac);
+  void initializePublisher();
 
   // Mimic joint specific
   const std::vector<kdl_kinematics_plugin::JointMimic>& mimic_joints_;
@@ -107,5 +113,9 @@ private:
 
   Jacobian jac_;          // full Jacobian
   Jacobian jac_reduced_;  // reduced Jacobian with contributions of mimic joints mapped onto active DoFs
+
+  // ROS2 publisher
+  rclcpp::Publisher<moveit_kinematics::msg::KinematicsData>::SharedPtr kinematics_publisher_;
+  bool publisher_initialized_;
 };
 }  // namespace KDL

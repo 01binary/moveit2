@@ -24,6 +24,7 @@
 // Copyright  (C)  2013  Sachin Chitta, Willow Garage
 
 #include <moveit/kdl_kinematics_plugin/chainiksolver_vel_mimic_svd.hpp>
+#include <mutex>
 
 namespace
 {
@@ -37,6 +38,11 @@ unsigned int countMimicJoints(const std::vector<kdl_kinematics_plugin::JointMimi
   }
   return num_mimic;
 }
+
+// Static node and publisher for debugging
+static std::shared_ptr<rclcpp::Node> g_debug_node = nullptr;
+static rclcpp::Publisher<moveit_kinematics::msg::KinematicsData>::SharedPtr g_kinematics_publisher = nullptr;
+static std::mutex g_publisher_mutex;
 }  // namespace
 
 namespace KDL
@@ -53,6 +59,7 @@ ChainIkSolverVelMimicSVD::ChainIkSolverVelMimicSVD(const Chain& chain,
   , svd_(position_ik ? 3 : 6, chain_.getNrOfJoints() - num_mimic_joints_, Eigen::ComputeThinU | Eigen::ComputeThinV)
   , jac_(chain_.getNrOfJoints())
   , jac_reduced_(svd_.cols())
+  , publisher_initialized_(false)
 {
   assert(mimic_joints_.size() == chain.getNrOfJoints());
 #ifndef NDEBUG
@@ -70,6 +77,30 @@ void ChainIkSolverVelMimicSVD::updateInternalDataStructures()
 
 ChainIkSolverVelMimicSVD::~ChainIkSolverVelMimicSVD() = default;
 
+void ChainIkSolverVelMimicSVD::initializePublisher()
+{
+  if (publisher_initialized_)
+    return;
+
+  std::lock_guard<std::mutex> lock(g_publisher_mutex);
+  if (!g_debug_node)
+  {
+    // Create a static node with a valid name
+    g_debug_node = std::make_shared<rclcpp::Node>("kinematics_debug");
+    // Optionally, spin the node in a background thread if you want callbacks (not needed for publishing only)
+    // rclcpp::executors::SingleThreadedExecutor exec;
+    // exec.add_node(g_debug_node);
+    // std::thread([&exec]() { exec.spin(); }).detach();
+  }
+  if (!g_kinematics_publisher)
+  {
+    g_kinematics_publisher = g_debug_node->create_publisher<moveit_kinematics::msg::KinematicsData>(
+      "kinematics_data", rclcpp::QoS(10));
+  }
+  kinematics_publisher_ = g_kinematics_publisher;
+  publisher_initialized_ = true;
+}
+
 bool ChainIkSolverVelMimicSVD::jacToJacReduced(const Jacobian& jac, Jacobian& jac_reduced)
 {
   jac_reduced.data.setZero();
@@ -81,6 +112,38 @@ bool ChainIkSolverVelMimicSVD::jacToJacReduced(const Jacobian& jac, Jacobian& ja
     jac_reduced.setColumn(mimic_joints_[i].map_index, result);
   }
   return true;
+}
+
+void ChainIkSolverVelMimicSVD::publishKinematicsData(const Eigen::MatrixXd& jac)
+{
+  // Lazy initialization of publisher
+  if (!publisher_initialized_)
+  {
+    initializePublisher();
+  }
+
+  if (!kinematics_publisher_)
+    return;
+
+  auto msg = moveit_kinematics::msg::KinematicsData();
+  int rows = std::min(6, static_cast<int>(jac.rows()));
+  int cols = std::min(7, static_cast<int>(jac.cols()));
+  for (int i = 0; i < rows; ++i)
+  {
+    for (int j = 0; j < cols; ++j)
+    {
+      switch (i)
+      {
+        case 0: msg.r1[j] = jac(i, j); break;
+        case 1: msg.r2[j] = jac(i, j); break;
+        case 2: msg.r3[j] = jac(i, j); break;
+        case 3: msg.r4[j] = jac(i, j); break;
+        case 4: msg.r5[j] = jac(i, j); break;
+        case 5: msg.r6[j] = jac(i, j); break;
+      }
+    }
+  }
+  kinematics_publisher_->publish(msg);
 }
 
 // NOLINTNEXTLINE(readability-identifier-naming)
@@ -100,9 +163,13 @@ int ChainIkSolverVelMimicSVD::CartToJnt(const JntArray& q_in, const Twist& v_in,
 
   // weight Jacobian
   auto& jac = jac_reduced_.data;
+
   const Eigen::Index rows = svd_.rows();  // only operate on position rows?
   jac.topRows(rows) *= joint_weights.asDiagonal();
   jac.topRows(rows).transpose() *= cartesian_weights.topRows(rows).asDiagonal();
+
+  // Publish kinematics data
+  publishKinematicsData(jac);
 
   // transform v_in to 6D Eigen::Vector
   Eigen::Matrix<double, 6, 1> vin;
