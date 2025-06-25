@@ -16,8 +16,10 @@ ament_target_dependencies(${MOVEIT_LIB_NAME}
   EIGEN3
 )
 
-# Link against the generated messages
-rosidl_target_interfaces(${MOVEIT_LIB_NAME} ${PROJECT_NAME} "rosidl_typesupport_cpp")
+# Link against the generated messages using the newer approach
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(${MOVEIT_LIB_NAME} "${cpp_typesupport_target}")
 
 # prevent pluginlib from using boost
 target_compile_definitions(${MOVEIT_LIB_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
